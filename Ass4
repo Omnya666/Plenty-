@@ -1,0 +1,128 @@
+def initpop(npop, x_max, x_min, v_max, dim):
+    # Use this function
+    # to generate the initial population for the PSO
+    # npop: population size
+    # x_max: the upper limit for each decision variable (positions). [10,12]
+    # x_min: the lower limit for each decision variable (positions). [1,2]
+    # v_max: the upper limit for each decision variable (velocity). [2,4]
+    # consider that the lower limit of the speed is equal to the upper limit
+    # dim: number of decision variables
+    #   x_id = np.zeros((npop,2))
+    #   v_id = np.zeros((npop,2))
+
+    #   x_id[:,0] = np.random.uniform(x_min[0],x_max[0],(npop))
+    #   x_id[:,1] = np.random.uniform(x_min[1],x_max[1],(npop))
+
+    #   v_id[:,0] = np.random.uniform((-1*v_max[0]),v_max[0],(npop))
+    #   v_id[:,1] = np.random.uniform((-1*v_max[1]),v_max[1],(npop))
+    x_id = np.zeros((npop, dim), dtype=float)
+    v_id = np.zeros((npop, dim), dtype=float)
+    for i in range(dim):
+        x_id[:, i] = np.random.uniform(x_min[i], x_max[i], (npop))
+        v_id[:, i] = np.random.uniform((-1 * v_max[i]), v_max[i], (npop))
+    return x_id, v_id
+
+
+# x_id: the initial positions. Array of arrays of npop*dim
+# v_id: the initial velocities. Array f arrays of npop*dim
+
+
+def fitCalc(x_i):
+    # Use this function to calculate the fitness for the particle
+    # The function is Max z= sin(2x1-0.5pi) + 3cos(x2) + 0.5x1
+    # x_i: single particle position
+    fitness = np.sin(2 * x_i[0] - (0.5 * np.pi)) + 3 * np.cos(x_i[1]) + (0.5 * x_i[0])
+    return fitness
+    # fitness: the fitness value of a signle particle.
+
+
+def updatePid(x_i, x_fitness, p_i, particle_bestFit):
+    # Use this function to find single particle best position (particle own history)
+    # x_i: single particle position.
+    # p_i: the particle best position across all the previouse generations.
+    # particle_best: particles best fintess values across all the previouse generations.
+
+    if x_fitness > particle_bestFit:
+        # particle_bestFit = x_fitness
+        p_i = x_i
+
+    return p_i  # ,particle_bestFit
+
+
+# pi: the particle best position.
+# particle_bestFit: particle best fintess values.
+
+
+def updatePgd(p_i, particle_bestFit, p_g, global_bestFit):
+    # Use this function to find the best position in the population
+    # p_i: a single particle best position
+    # particle_bestFit: a particle fitness value associated to p_i.
+    # p_g: a vector of 1*dim of representing the best position in the population across all the previouse generations
+    # global_bestFit: fitness value associated to the p_g
+
+    if particle_bestFit > global_bestFit:
+        p_g = p_i
+        global_bestFit = particle_bestFit
+
+    return p_g, global_bestFit
+
+
+# p_g: the best position in the population.
+# global_bestFit: the best fitness in the population.
+
+
+def updateVidXid(p_i, p_g, x_i, v_i, c_cog, c_soc,
+                 dim):  # Use this function to calculate new particle velocity and position
+    # p_i: the particle best position across all the previouse generations.
+    # p_g: a vector of 1*d of the best position in the population across all the previouse generations
+    # x_i: single particle position.
+    # v_i: single particle velocity.
+    # c_cog: cognitive component accerlaration constant
+    # c_soc: social component accerlaration constant
+
+    # The code is hardcoded, make it generic and modify any mistakes
+    r_cog = np.random.random(dim)
+    r_soc = np.random.random(dim)
+    v_i = np.array(v_i) + (c_cog * np.multiply(r_cog, np.subtract(p_i, x_i))) + (
+                c_soc * np.multiply(r_soc, np.subtract(p_g, x_i)))
+    x_i = np.array(x_i) + v_i
+
+    return x_i, v_i
+
+
+def PSO(numItr, npop, x_max, x_min, v_max, dim, c_cog, c_soc):
+    # Use this function to put all the PSO algorithm together for number of iterations
+    # numItr: number of iterations.(generations)
+    # npop: population size
+    # x_max: the upper limit for each decision variable (positions). [10,12]
+    # x_min: the lower limit for each decision variable (positions). [1,2]
+    # v_max: the upper limit for each decision variable (velocity). [2,4]
+    # c_cog: cognitive constant (c1)
+    # c_soc: social constant (c2)
+    # dim: the number of decision variable.
+
+    # Intialize
+    # best_hist = np.zeros(numItr,dtype=float)
+    x, v = initpop(npop, x_max, x_min, v_max, dim)
+    p = x[:]  # particles' own experience
+    p_g = np.zeros(dim)  # best position across all particles
+    global_bestFit = -100000000000
+
+    # repeat till number of iterations
+    for iteration in range(numItr):
+
+        # Update particle best position and global best position
+        for i in range(npop):
+            p[i] = updatePid(x[i], fitCalc(x[i]), p[i], fitCalc(p[i]))
+            p_g, global_bestFit = updatePgd(p[i], fitCalc(p[i]), p_g, global_bestFit)
+
+        # best_hist[iteration] = global_bestFit
+
+        # Update velocity and position
+        for i in range(npop):
+            x[i], v[i] = updateVidXid(p[i], p_g, x[i], v[i], c_cog, c_soc, dim)
+
+    return p_g, global_bestFit
+    # p_g: the position with the best fitness in the final generation.
+    # global_bestFit: value associated to p_g
+
